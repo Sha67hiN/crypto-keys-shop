@@ -50,8 +50,11 @@ export type Database = {
         Row: {
           created_at: string
           delivered_at: string | null
+          expected_amount: number | null
+          expires_at: string | null
           id: string
           invoice_url: string | null
+          last_checked_at: string | null
           order_code: string
           paid_at: string | null
           pay_address: string | null
@@ -59,19 +62,24 @@ export type Database = {
           pay_currency: string | null
           payment_id: string | null
           payment_provider: string
+          payment_wallet_id: string | null
           product_id: string
           product_name: string
           quantity: number
           status: Database["public"]["Enums"]["order_status"]
           total_usd: number
+          tx_hash: string | null
           unit_price_usd: number
           user_id: string
         }
         Insert: {
           created_at?: string
           delivered_at?: string | null
+          expected_amount?: number | null
+          expires_at?: string | null
           id?: string
           invoice_url?: string | null
+          last_checked_at?: string | null
           order_code?: string
           paid_at?: string | null
           pay_address?: string | null
@@ -79,19 +87,24 @@ export type Database = {
           pay_currency?: string | null
           payment_id?: string | null
           payment_provider?: string
+          payment_wallet_id?: string | null
           product_id: string
           product_name: string
           quantity: number
           status?: Database["public"]["Enums"]["order_status"]
           total_usd: number
+          tx_hash?: string | null
           unit_price_usd: number
           user_id: string
         }
         Update: {
           created_at?: string
           delivered_at?: string | null
+          expected_amount?: number | null
+          expires_at?: string | null
           id?: string
           invoice_url?: string | null
+          last_checked_at?: string | null
           order_code?: string
           paid_at?: string | null
           pay_address?: string | null
@@ -99,15 +112,24 @@ export type Database = {
           pay_currency?: string | null
           payment_id?: string | null
           payment_provider?: string
+          payment_wallet_id?: string | null
           product_id?: string
           product_name?: string
           quantity?: number
           status?: Database["public"]["Enums"]["order_status"]
           total_usd?: number
+          tx_hash?: string | null
           unit_price_usd?: number
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_payment_wallet_id_fkey"
+            columns: ["payment_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "payment_wallets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_product_id_fkey"
             columns: ["product_id"]
@@ -123,6 +145,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_wallets: {
+        Row: {
+          address: string
+          asset: string
+          chain: string
+          contract_address: string | null
+          created_at: string
+          decimals: number
+          id: string
+          is_active: boolean
+          label: string
+          min_confirmations: number
+          sort_order: number
+        }
+        Insert: {
+          address: string
+          asset: string
+          chain: string
+          contract_address?: string | null
+          created_at?: string
+          decimals?: number
+          id?: string
+          is_active?: boolean
+          label: string
+          min_confirmations?: number
+          sort_order?: number
+        }
+        Update: {
+          address?: string
+          asset?: string
+          chain?: string
+          contract_address?: string | null
+          created_at?: string
+          decimals?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          min_confirmations?: number
+          sort_order?: number
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -203,6 +267,7 @@ export type Database = {
           footer_note: string
           heading: string
           id: boolean
+          payment_window_minutes: number
           store_name: string
           support_email: string | null
           tagline: string
@@ -214,6 +279,7 @@ export type Database = {
           footer_note?: string
           heading?: string
           id?: boolean
+          payment_window_minutes?: number
           store_name?: string
           support_email?: string | null
           tagline?: string
@@ -225,6 +291,7 @@ export type Database = {
           footer_note?: string
           heading?: string
           id?: boolean
+          payment_window_minutes?: number
           store_name?: string
           support_email?: string | null
           tagline?: string

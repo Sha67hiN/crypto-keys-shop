@@ -8,6 +8,13 @@
       "when": 1790790054626,
       "tag": "0000_create_account_store",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790790109338,
+      "tag": "0001_add_self_hosted_crypto_payments",
+      "breakpoints": true
     }
   ]
 }
