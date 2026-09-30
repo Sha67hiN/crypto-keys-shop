@@ -22,6 +22,13 @@
       "when": 1790790155081,
       "tag": "0002_add_claim_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790790275793,
+      "tag": "0003_add_support_chat_and_telegram",
+      "breakpoints": true
     }
   ]
 }

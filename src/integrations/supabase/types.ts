@@ -270,7 +270,9 @@ export type Database = {
           payment_window_minutes: number
           store_name: string
           support_email: string | null
+          support_hours: string | null
           tagline: string
+          telegram_handle: string | null
           updated_at: string
         }
         Insert: {
@@ -282,7 +284,9 @@ export type Database = {
           payment_window_minutes?: number
           store_name?: string
           support_email?: string | null
+          support_hours?: string | null
           tagline?: string
+          telegram_handle?: string | null
           updated_at?: string
         }
         Update: {
@@ -294,7 +298,9 @@ export type Database = {
           payment_window_minutes?: number
           store_name?: string
           support_email?: string | null
+          support_hours?: string | null
           tagline?: string
+          telegram_handle?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -343,6 +349,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_by_admin: boolean
+          read_by_user: boolean
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          read_by_user?: boolean
+          sender: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_by_admin?: boolean
+          read_by_user?: boolean
+          sender?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
