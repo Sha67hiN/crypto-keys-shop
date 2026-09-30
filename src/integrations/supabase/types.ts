@@ -376,6 +376,7 @@ export type Database = {
       }
     }
     Functions: {
+      claim_admin: { Args: never; Returns: boolean }
       deliver_order: { Args: { _order_id: string }; Returns: number }
       has_role: {
         Args: {

@@ -15,6 +15,13 @@
       "when": 1790790109338,
       "tag": "0001_add_self_hosted_crypto_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790790155081,
+      "tag": "0002_add_claim_admin",
+      "breakpoints": true
     }
   ]
 }
