@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790790054626,
+      "tag": "0000_create_account_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790790109338,
+      "tag": "0001_add_self_hosted_crypto_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790790155081,
+      "tag": "0002_add_claim_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790790275793,
+      "tag": "0003_add_support_chat_and_telegram",
+      "breakpoints": true
+    }
+  ]
+}
