@@ -29,6 +29,13 @@
       "when": 1790790275793,
       "tag": "0003_add_support_chat_and_telegram",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790935721594,
+      "tag": "0004_server_payment_rpcs",
+      "breakpoints": true
     }
   ]
 }
