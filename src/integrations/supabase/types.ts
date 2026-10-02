@@ -412,6 +412,8 @@ export type Database = {
       }
     }
     Functions: {
+      _check_server_key: { Args: { _hash: string }; Returns: undefined }
+      available_stock: { Args: { _product_id: string }; Returns: number }
       claim_admin: { Args: never; Returns: boolean }
       deliver_order: { Args: { _order_id: string }; Returns: number }
       has_role: {
@@ -421,6 +423,30 @@ export type Database = {
         }
         Returns: boolean
       }
+      server_order_update: {
+        Args: {
+          _action: string
+          _key: string
+          _order_id: string
+          _tx_hash: string
+        }
+        Returns: string
+      }
+      server_place_order: {
+        Args: {
+          _expected: number
+          _key: string
+          _product_id: string
+          _quantity: number
+          _total_usd: number
+          _unit_price: number
+          _wallet_id: string
+          _window_minutes: number
+        }
+        Returns: string
+      }
+      set_server_key_hash: { Args: { _hash: string }; Returns: undefined }
+      tx_hash_used: { Args: { _hashes: string[] }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "user"
