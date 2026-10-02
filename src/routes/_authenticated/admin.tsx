@@ -329,12 +329,14 @@ function WalletRow({ wallet, isNew }: { wallet: Wallet; isNew?: boolean }) {
   );
 }
 
+type SettingsForm = { store_name: string; heading: string; tagline: string; footer_note: string; support_email: string; telegram_handle: string; support_hours: string; payment_window_minutes: string };
+
 function Settings() {
   const get = useServerFn(A.adminGetSettings);
   const save = useServerFn(A.adminSaveSettings);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["admin-settings"], queryFn: () => get() });
-  const [f, setF] = useState<Record<string, string>>({});
+  const [f, setF] = useState<SettingsForm>({ store_name: "", heading: "", tagline: "", footer_note: "", support_email: "", telegram_handle: "", support_hours: "", payment_window_minutes: "60" });
   const [auto, setAuto] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -347,17 +349,17 @@ function Settings() {
     });
     setAuto(s.auto_deliver);
   }, [data]);
-  const labels: Record<string, string> = {
+  const labels: Record<keyof SettingsForm, string> = {
     store_name: "Store name", heading: "Homepage heading", tagline: "Homepage tagline", footer_note: "Footer note",
     support_email: "Support email", telegram_handle: "Telegram support ID (without @)", support_hours: "Support hours",
     payment_window_minutes: "Minutes customers have to pay",
   };
   return (
     <Panel className="grid gap-3 sm:grid-cols-2">
-      {Object.keys(labels).map((k) => (
+      {(Object.keys(labels) as (keyof SettingsForm)[]).map((k) => (
         <div key={k}>
           <FieldLabel>{labels[k]}</FieldLabel>
-          <TextField value={f[k] ?? ""} onChange={(v) => setF({ ...f, [k]: v })} />
+          <TextField value={f[k]} onChange={(v) => setF({ ...f, [k]: v })} />
         </div>
       ))}
       <label className="flex items-center gap-2 text-sm text-snow">

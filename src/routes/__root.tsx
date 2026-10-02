@@ -7,8 +7,12 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { SessionProvider } from "@/hooks/useSession";
+import { SiteHeader, SiteFooter } from "@/components/site/SiteHeader";
+import { ChatWidget } from "@/components/site/ChatWidget";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -34,7 +38,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -77,14 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Keyvault · Account marketplace" },
+      { name: "description", content: "Buy accounts with crypto, delivered instantly." },
+            { property: "og:title", content: "Keyvault" },
+      { property: "og:description", content: "Buy accounts with crypto, delivered instantly." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -120,7 +122,18 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <SessionProvider>
+        <div className="glow-field min-h-screen bg-ink">
+          <div className="mx-auto max-w-6xl px-4 py-5">
+            <SiteHeader />
+            <main>
+              <Outlet />
+            </main>
+            <SiteFooter />
+          </div>
+          <ChatWidget />
+        </div>
+      </SessionProvider>
     </QueryClientProvider>
   );
 }
