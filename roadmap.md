@@ -6,7 +6,8 @@
 - Design system (Frosted Command) in src/styles.css
 - Self-hosted on-chain payment watcher (chain.server.ts) + order server functions
 
-## In progress
+## Done (UI)
+- Storefront, product/checkout, My Orders (text/.txt/.csv), admin dashboard, live chat widget, Telegram link
 - Storefront, auth, product/checkout, My Orders, Admin dashboard pages
 
 ## To do
