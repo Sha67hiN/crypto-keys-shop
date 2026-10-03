@@ -104,11 +104,7 @@ export const createOrder = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!product || !product.is_active) throw new Error("That product is not available.");
 
-    const { count: stock } = await supabaseAdmin
-      .from("stock_items")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", product.id)
-      .eq("status", "available");
+    const { data: stock } = await supabaseAdmin.rpc("available_stock", { _product_id: product.id });
     if ((stock ?? 0) < data.quantity) {
       throw new Error(`Only ${stock ?? 0} left in stock for ${product.name}.`);
     }
@@ -137,28 +133,20 @@ export const createOrder = createServerFn({ method: "POST" })
     const tail = (Math.floor(Math.random() * 9000) + 1000) / 1e6;
     const expected = Number((base + tail).toFixed(6));
 
-    const { data: order, error } = await supabaseAdmin
-      .from("orders")
-      .insert({
-        user_id: context.userId,
-        product_id: product.id,
-        product_name: product.name,
-        quantity: data.quantity,
-        unit_price_usd: unitPrice,
-        total_usd: totalUsd,
-        payment_provider: "self-hosted",
-        payment_wallet_id: wallet.id,
-        pay_currency: wallet.asset,
-        pay_amount: expected,
-        expected_amount: expected,
-        pay_address: wallet.address,
-        expires_at: new Date(Date.now() + windowMinutes * 60_000).toISOString(),
-      })
-      .select("id")
-      .single();
+    const { serverKeyHash } = await import("./server-key.server");
+    const { data: orderId, error } = await supabaseAdmin.rpc("server_place_order", {
+      _key: serverKeyHash(),
+      _product_id: product.id,
+      _quantity: data.quantity,
+      _wallet_id: wallet.id,
+      _total_usd: totalUsd,
+      _unit_price: unitPrice,
+      _expected: expected,
+      _window_minutes: windowMinutes,
+    });
     if (error) throw new Error(error.message);
 
-    return { orderId: order.id };
+    return { orderId: orderId as string };
   });
 
 export const checkOrderPayment = createServerFn({ method: "POST" })
@@ -167,6 +155,15 @@ export const checkOrderPayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { fetchIncomingTransfers } = await import("./chain.server");
     const supabaseAdmin = context.supabase;
+    const { serverKeyHash } = await import("./server-key.server");
+    const key = serverKeyHash();
+    const act = async (action: string, tx = "") => {
+      const { data: st, error } = await supabaseAdmin.rpc("server_order_update", {
+        _key: key, _order_id: data.orderId, _action: action, _tx_hash: tx,
+      });
+      if (error) throw new Error(error.message);
+      return (st ?? "pending") as string;
+    };
 
     const { data: order } = await context.supabase
       .from("orders")
@@ -177,18 +174,12 @@ export const checkOrderPayment = createServerFn({ method: "POST" })
     if (order.status === "delivered") return { status: "delivered" as const, matched: true };
 
     if (order.status === "pending" && order.expires_at && new Date(order.expires_at) < new Date()) {
-      await supabaseAdmin.from("orders").update({ status: "failed" }).eq("id", order.id);
+      await act("expire");
       return { status: "failed" as const, matched: false };
     }
 
     if (order.status === "paid") {
-      await supabaseAdmin.rpc("deliver_order", { _order_id: order.id });
-      const { data: fresh } = await supabaseAdmin
-        .from("orders")
-        .select("status")
-        .eq("id", order.id)
-        .maybeSingle();
-      return { status: (fresh?.status ?? "paid") as string, matched: true };
+      return { status: await act("deliver"), matched: true };
     }
 
     if (!order.payment_wallet_id || order.expected_amount === null) {
@@ -205,19 +196,13 @@ export const checkOrderPayment = createServerFn({ method: "POST" })
     const sinceMs = new Date(order.created_at).getTime() - 10 * 60_000;
     const transfers = await fetchIncomingTransfers(wallet, sinceMs);
 
-    await supabaseAdmin
-      .from("orders")
-      .update({ last_checked_at: new Date().toISOString() })
-      .eq("id", order.id);
+    await act("checked");
 
     if (transfers.length === 0) return { status: "pending" as const, matched: false };
 
     const hashes = transfers.map((t) => t.hash);
-    const { data: used } = await supabaseAdmin
-      .from("orders")
-      .select("tx_hash")
-      .in("tx_hash", hashes);
-    const usedSet = new Set((used ?? []).map((u) => u.tx_hash));
+    const { data: used } = await supabaseAdmin.rpc("tx_hash_used", { _hashes: hashes });
+    const usedSet = new Set((used ?? []) as string[]);
 
     const expected = Number(order.expected_amount);
     const match = transfers.find(
@@ -225,21 +210,7 @@ export const checkOrderPayment = createServerFn({ method: "POST" })
     );
     if (!match) return { status: "pending" as const, matched: false };
 
-    const { error: claimError } = await supabaseAdmin
-      .from("orders")
-      .update({ status: "paid", paid_at: new Date().toISOString(), tx_hash: match.hash })
-      .eq("id", order.id)
-      .eq("status", "pending");
-    if (claimError) return { status: "pending" as const, matched: false };
-
-    await supabaseAdmin.rpc("deliver_order", { _order_id: order.id });
-    const { data: fresh } = await supabaseAdmin
-      .from("orders")
-      .select("status")
-      .eq("id", order.id)
-      .maybeSingle();
-
-    return { status: (fresh?.status ?? "paid") as string, matched: true };
+    return { status: await act("paid", match.hash), matched: true };
   });
 
 export const claimAdmin = createServerFn({ method: "POST" })
