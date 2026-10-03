@@ -8,13 +8,15 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
   });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
+  const { serverKeyHash } = await import("./server-key.server");
+  await context.supabase.rpc("set_server_key_hash", { _hash: serverKeyHash() });
 }
 
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
 
     const [orders, products, stock, users, unread] = await Promise.all([
       supabaseAdmin
@@ -55,7 +57,7 @@ export const adminListProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const [{ data: products }, { data: stock }] = await Promise.all([
       supabaseAdmin.from("products").select("*").order("sort_order"),
       supabaseAdmin.from("stock_items").select("product_id,status"),
@@ -99,7 +101,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const row = {
       name: data.name.trim(),
       slug: data.slug
@@ -135,7 +137,7 @@ export const adminDeleteProduct = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -146,7 +148,7 @@ export const adminAddStock = createServerFn({ method: "POST" })
   .inputValidator((data: { productId: string; raw: string }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const lines = data.raw
       .split(/\r?\n/)
       .map((l) => l.trim())
@@ -164,7 +166,7 @@ export const adminListStock = createServerFn({ method: "GET" })
   .inputValidator((data: { productId: string }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { data: rows } = await supabaseAdmin
       .from("stock_items")
       .select("id,payload,status,created_at,sold_at")
@@ -179,7 +181,7 @@ export const adminDeleteStock = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin
       .from("stock_items")
       .delete()
@@ -194,14 +196,15 @@ export const adminUpdateOrder = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; action: "approve" | "reject" | "refund" }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
 
     if (data.action === "approve") {
       await supabaseAdmin
         .from("orders")
         .update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("id", data.id);
-      await supabaseAdmin.rpc("deliver_order", { _order_id: data.id });
+      const { serverKeyHash } = await import("./server-key.server");
+      await supabaseAdmin.rpc("server_order_update", { _key: serverKeyHash(), _order_id: data.id, _action: "deliver", _tx_hash: "" });
     } else {
       await supabaseAdmin
         .from("orders")
@@ -220,7 +223,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const [{ data: profiles }, { data: roles }, { data: orders }] = await Promise.all([
       supabaseAdmin
         .from("profiles")
@@ -253,7 +256,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
   .inputValidator((data: { userId: string; blocked?: boolean; makeAdmin?: boolean }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     if (typeof data.blocked === "boolean") {
       await supabaseAdmin
         .from("profiles")
@@ -281,7 +284,7 @@ export const adminGetSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const [{ data: settings }, { data: wallets }] = await Promise.all([
       supabaseAdmin.from("site_settings").select("*").maybeSingle(),
       supabaseAdmin.from("payment_wallets").select("*").order("sort_order"),
@@ -307,7 +310,7 @@ export const adminSaveSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin
       .from("site_settings")
       .update({
@@ -350,7 +353,7 @@ export const adminSaveWallet = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const row = {
       label: data.label.trim(),
       chain: data.chain.trim().toLowerCase(),
@@ -380,7 +383,7 @@ export const adminDeleteWallet = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin.from("payment_wallets").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -390,7 +393,7 @@ export const adminListSupportThreads = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const [{ data: messages }, { data: profiles }] = await Promise.all([
       supabaseAdmin
         .from("support_messages")
@@ -427,7 +430,7 @@ export const adminReplySupport = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     await supabaseAdmin
       .from("support_messages")
       .insert({ user_id: data.userId, sender: "admin", body: data.body.trim(), read_by_admin: true });
