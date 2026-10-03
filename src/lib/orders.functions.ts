@@ -88,7 +88,7 @@ export const createOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { getUsdPrice } = await import("./chain.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
 
     const { data: profile } = await context.supabase
       .from("profiles")
@@ -166,7 +166,7 @@ export const checkOrderPayment = createServerFn({ method: "POST" })
   .inputValidator((data: { orderId: string }) => data)
   .handler(async ({ data, context }) => {
     const { fetchIncomingTransfers } = await import("./chain.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
 
     const { data: order } = await context.supabase
       .from("orders")
