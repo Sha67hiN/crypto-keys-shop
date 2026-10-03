@@ -164,7 +164,9 @@ function Products() {
             <ActionButton
               onClick={async () => {
                 try {
-                  await save({ data: { ...form, slug: form.slug || form.name, price_usd: Number(form.price_usd) } });
+                  const price = Number(form.price_usd.replace(",", ".").replace(/[^0-9.]/g, ""));
+                  if (!Number.isFinite(price) || form.price_usd.trim() === "") throw new Error("Enter a price like 0.75 or 1.45");
+                  await save({ data: { ...form, slug: form.slug || form.name, price_usd: Math.round(price * 100) / 100 } });
                   setForm(null);
                   refresh();
                 } catch (e) { alert(errMsg(e)); }
