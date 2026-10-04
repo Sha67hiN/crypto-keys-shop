@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { getStorefront } from "@/lib/storefront.functions";
 import { Pill, ProductMark } from "@/components/site/Pieces";
@@ -18,7 +18,15 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(storeQuery),
-  errorComponent: () => <p className="py-20 text-center text-fog">The store couldn't load. Refresh to try again.</p>,
+  errorComponent: ({ reset }) => {
+    const router = useRouter();
+    return (
+      <div className="py-20 text-center text-fog">
+        <p>The store couldn't load.</p>
+        <button className="mt-3 font-mono text-xs text-cyan" onClick={() => { router.invalidate(); reset(); }}>Try again</button>
+      </div>
+    );
+  },
   notFoundComponent: () => <p className="py-20 text-center text-fog">Not found.</p>,
   component: Index,
 });
@@ -39,8 +47,11 @@ function Index() {
             key={p.id}
             to="/p/$slug"
             params={{ slug: p.slug }}
-            className="panel-frost group rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
+            className="panel-frost group overflow-hidden rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
           >
+            {p.banner_url && (
+              <img src={p.banner_url} alt={p.name} loading="lazy" className="-mx-5 -mt-5 mb-4 aspect-[16/7] w-[calc(100%+2.5rem)] max-w-none object-cover" />
+            )}
             <div className="flex items-start justify-between">
               <ProductMark letter={p.icon_letter} accent={p.accent} />
               <Pill tone={p.stock > 0 ? "cyan" : "rose"} dot={p.stock > 0}>

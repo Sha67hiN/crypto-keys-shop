@@ -51,6 +51,7 @@ export function SiteHeader() {
       <nav className="flex items-center gap-1">
         <NavLink to="/" label="Store" />
         {user && <NavLink to="/orders" label="My Orders" />}
+        {user && <NavLink to="/wallet" label="Wallet" />}
         {isAdmin && <NavLink to="/admin" label="Admin" />}
       </nav>
 
