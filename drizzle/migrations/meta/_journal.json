@@ -36,6 +36,13 @@
       "when": 1790935721594,
       "tag": "0004_server_payment_rpcs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791110698783,
+      "tag": "0005_banners_and_customer_wallet",
+      "breakpoints": true
     }
   ]
 }

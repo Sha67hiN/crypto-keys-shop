@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      balance_transactions: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          order_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -54,6 +84,7 @@ export type Database = {
           expires_at: string | null
           id: string
           invoice_url: string | null
+          kind: string
           last_checked_at: string | null
           order_code: string
           paid_at: string | null
@@ -63,7 +94,7 @@ export type Database = {
           payment_id: string | null
           payment_provider: string
           payment_wallet_id: string | null
-          product_id: string
+          product_id: string | null
           product_name: string
           quantity: number
           status: Database["public"]["Enums"]["order_status"]
@@ -79,6 +110,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           invoice_url?: string | null
+          kind?: string
           last_checked_at?: string | null
           order_code?: string
           paid_at?: string | null
@@ -88,7 +120,7 @@ export type Database = {
           payment_id?: string | null
           payment_provider?: string
           payment_wallet_id?: string | null
-          product_id: string
+          product_id?: string | null
           product_name: string
           quantity: number
           status?: Database["public"]["Enums"]["order_status"]
@@ -104,6 +136,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           invoice_url?: string | null
+          kind?: string
           last_checked_at?: string | null
           order_code?: string
           paid_at?: string | null
@@ -113,7 +146,7 @@ export type Database = {
           payment_id?: string | null
           payment_provider?: string
           payment_wallet_id?: string | null
-          product_id?: string
+          product_id?: string | null
           product_name?: string
           quantity?: number
           status?: Database["public"]["Enums"]["order_status"]
@@ -191,6 +224,7 @@ export type Database = {
       products: {
         Row: {
           accent: string
+          banner_url: string | null
           category: string | null
           created_at: string
           credential_format: string
@@ -206,6 +240,7 @@ export type Database = {
         }
         Insert: {
           accent?: string
+          banner_url?: string | null
           category?: string | null
           created_at?: string
           credential_format?: string
@@ -221,6 +256,7 @@ export type Database = {
         }
         Update: {
           accent?: string
+          banner_url?: string | null
           category?: string | null
           created_at?: string
           credential_format?: string
@@ -380,6 +416,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_balances: {
+        Row: {
+          balance_usd: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_usd?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_usd?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -413,6 +467,21 @@ export type Database = {
     }
     Functions: {
       _check_server_key: { Args: { _hash: string }; Returns: undefined }
+      _credit_balance: {
+        Args: {
+          _amount: number
+          _kind: string
+          _note: string
+          _order: string
+          _user: string
+        }
+        Returns: undefined
+      }
+      admin_adjust_balance: {
+        Args: { _amount: number; _note: string; _user: string }
+        Returns: undefined
+      }
+      admin_refund_order: { Args: { _order_id: string }; Returns: string }
       available_stock: { Args: { _product_id: string }; Returns: number }
       claim_admin: { Args: never; Returns: boolean }
       deliver_order: { Args: { _order_id: string }; Returns: number }
@@ -422,6 +491,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      pay_with_balance: {
+        Args: { _product_id: string; _quantity: number }
+        Returns: string
       }
       server_order_update: {
         Args: {
@@ -440,6 +513,16 @@ export type Database = {
           _quantity: number
           _total_usd: number
           _unit_price: number
+          _wallet_id: string
+          _window_minutes: number
+        }
+        Returns: string
+      }
+      server_place_topup: {
+        Args: {
+          _amount_usd: number
+          _expected: number
+          _key: string
           _wallet_id: string
           _window_minutes: number
         }
