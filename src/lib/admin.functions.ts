@@ -92,6 +92,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       accent?: string;
       is_active?: boolean;
       sort_order?: number;
+      banner_url?: string | null;
     }) => {
       if (!data.name?.trim()) throw new Error("Product name is required.");
       if (!data.slug?.trim()) throw new Error("Product link name is required.");
@@ -117,6 +118,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       accent: data.accent || "cyan",
       is_active: data.is_active ?? true,
       sort_order: data.sort_order ?? 0,
+      ...(data.banner_url !== undefined ? { banner_url: data.banner_url } : {}),
     };
     if (data.id) {
       const { error } = await supabaseAdmin.from("products").update(row).eq("id", data.id);
@@ -205,11 +207,11 @@ export const adminUpdateOrder = createServerFn({ method: "POST" })
         .eq("id", data.id);
       const { serverKeyHash } = await import("./server-key.server");
       await supabaseAdmin.rpc("server_order_update", { _key: serverKeyHash(), _order_id: data.id, _action: "deliver", _tx_hash: "" });
+    } else if (data.action === "refund") {
+      const { error } = await supabaseAdmin.rpc("admin_refund_order", { _order_id: data.id });
+      if (error) throw new Error(error.message);
     } else {
-      await supabaseAdmin
-        .from("orders")
-        .update({ status: data.action === "reject" ? "cancelled" : "refunded" })
-        .eq("id", data.id);
+      await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("id", data.id);
     }
     const { data: fresh } = await supabaseAdmin
       .from("orders")
@@ -232,6 +234,8 @@ export const adminListUsers = createServerFn({ method: "GET" })
       supabaseAdmin.from("user_roles").select("user_id,role"),
       supabaseAdmin.from("orders").select("user_id,total_usd,status"),
     ]);
+    const { data: balances } = await supabaseAdmin.from("user_balances").select("user_id,balance_usd");
+    const balMap = new Map((balances ?? []).map((b) => [b.user_id, Number(b.balance_usd)]));
     const roleMap = new Map<string, string[]>();
     for (const r of roles ?? []) {
       roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
@@ -247,6 +251,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       ...p,
       roles: roleMap.get(p.id) ?? [],
       spend: spendMap.get(p.id)?.spend ?? 0,
+      balance: balMap.get(p.id) ?? 0,
       orders: spendMap.get(p.id)?.orders ?? 0,
     }));
   });
@@ -439,5 +444,19 @@ export const adminReplySupport = createServerFn({ method: "POST" })
       .update({ read_by_admin: true })
       .eq("user_id", data.userId)
       .eq("sender", "user");
+    return { ok: true };
+  });
+
+export const adminAdjustBalance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { userId: string; amount: number; note?: string }) => {
+    const amount = Math.round(Number(data.amount) * 100) / 100;
+    if (!Number.isFinite(amount) || amount === 0) throw new Error("Enter an amount like 5 or -2.50");
+    return { userId: data.userId, amount, note: data.note ?? "Adjusted by owner" };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { error } = await context.supabase.rpc("admin_adjust_balance", { _user: data.userId, _amount: data.amount, _note: data.note });
+    if (error) throw new Error(error.message.includes("balance_usd") ? "Balance cannot go below zero." : error.message);
     return { ok: true };
   });
