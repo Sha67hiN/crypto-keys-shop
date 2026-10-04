@@ -29,8 +29,17 @@ export type StoreProduct = {
   price_usd: number;
   icon_letter: string;
   accent: string;
+  banner_url: string | null;
   stock: number;
 };
+
+async function signBanners<T extends { banner_url: string | null }>(supabase: ReturnType<typeof publicClient>, rows: T[]): Promise<T[]> {
+  const paths = rows.map((r) => r.banner_url).filter((p): p is string => !!p && !p.startsWith("http"));
+  if (paths.length === 0) return rows;
+  const { data } = await supabase.storage.from("product-banners").createSignedUrls(paths, 60 * 60 * 24 * 7);
+  const map = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
+  return rows.map((r) => (r.banner_url && map.has(r.banner_url) ? { ...r, banner_url: map.get(r.banner_url)! } : r));
+}
 
 export type StoreSettings = {
   store_name: string;
@@ -45,7 +54,7 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(async () 
   const [{ data: products }, { data: counts }, { data: settings }] = await Promise.all([
     supabase
       .from("products")
-      .select("id,name,slug,subtitle,description,category,price_usd,icon_letter,accent")
+      .select("id,name,slug,subtitle,description,category,price_usd,icon_letter,accent,banner_url")
       .eq("is_active", true)
       .order("sort_order"),
     supabase.from("product_stock_counts").select("product_id,available"),
@@ -71,7 +80,7 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(async () 
     support_email: null,
   };
 
-  return { products: list, settings: site };
+  return { products: await signBanners(supabase, list), settings: site };
 });
 
 export const getProductBySlug = createServerFn({ method: "GET" })
@@ -80,7 +89,7 @@ export const getProductBySlug = createServerFn({ method: "GET" })
     const supabase = publicClient();
     const { data: product } = await supabase
       .from("products")
-      .select("id,name,slug,subtitle,description,category,price_usd,icon_letter,accent")
+      .select("id,name,slug,subtitle,description,category,price_usd,icon_letter,accent,banner_url")
       .eq("slug", data.slug)
       .eq("is_active", true)
       .maybeSingle();
@@ -101,9 +110,10 @@ export const getProductBySlug = createServerFn({ method: "GET" })
       supabase.from("site_settings").select("store_name,payment_window_minutes").maybeSingle(),
     ]);
 
+    const [signed] = await signBanners(supabase, [product]);
     return {
       product: {
-        ...product,
+        ...signed,
         price_usd: Number(product.price_usd),
         stock: Number(count?.available ?? 0),
       },

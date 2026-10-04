@@ -7,6 +7,9 @@ import { createOrder } from "@/lib/orders.functions";
 import { useSession } from "@/hooks/useSession";
 import { ActionButton, FieldLabel, Panel, Pill, ProductMark, TextField } from "@/components/site/Pieces";
 import { usd } from "@/lib/store-format";
+import { useQuery } from "@tanstack/react-query";
+import { getMyWallet, payWithBalance } from "@/lib/wallet.functions";
+import { CryptoLogo } from "@/components/site/CryptoLogo";
 
 const productQuery = (slug: string) =>
   queryOptions({ queryKey: ["product", slug], queryFn: () => getProductBySlug({ data: { slug } }) });
@@ -41,6 +44,10 @@ function ProductPage() {
   const [qty, setQty] = useState("1");
   const [walletId, setWalletId] = useState(data?.wallets[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const payBal = useServerFn(payWithBalance);
+  const fetchWallet = useServerFn(getMyWallet);
+  const { data: myWallet } = useQuery({ queryKey: ["my-wallet"], queryFn: () => fetchWallet(), enabled: !!user });
+  const [method, setMethod] = useState<"crypto" | "balance">("crypto");
   const [error, setError] = useState<string | null>(null);
   if (!data) return null;
   const { product, wallets } = data;
@@ -50,7 +57,9 @@ function ProductPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await create({ data: { productId: product.id, quantity: q, walletId } });
+      const res = method === "balance"
+        ? await payBal({ data: { productId: product.id, quantity: q } })
+        : await create({ data: { productId: product.id, quantity: q, walletId } });
       navigate({ to: "/orders/$orderId", params: { orderId: res.orderId } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create order.");
@@ -61,7 +70,10 @@ function ProductPage() {
 
   return (
     <div className="animate-reveal grid gap-6 py-8 lg:grid-cols-[1fr_22rem]">
-      <Panel>
+      <Panel className="overflow-hidden">
+        {product.banner_url && (
+          <img src={product.banner_url} alt={product.name} className="-mx-5 -mt-5 mb-5 aspect-[16/7] w-[calc(100%+2.5rem)] max-w-none object-cover" />
+        )}
         <div className="flex items-center gap-3">
           <ProductMark letter={product.icon_letter} accent={product.accent} />
           <div>
@@ -83,7 +95,23 @@ function ProductPage() {
         </div>
         <div>
           <FieldLabel>Pay with</FieldLabel>
-          {wallets.length === 0 ? (
+          {user && (
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              {(["crypto", "balance"] as const).map((m) => (
+                <button key={m} onClick={() => setMethod(m)}
+                  className={`rounded-lg px-3 py-2 text-sm ring-1 ${method === m ? "bg-cyan/10 text-snow ring-cyan/40" : "text-fog ring-snow/10"}`}>
+                  {m === "crypto" ? "Crypto" : `Wallet · ${usd(myWallet?.balance ?? 0)}`}
+                </button>
+              ))}
+            </div>
+          )}
+          {method === "balance" && user ? (
+            (myWallet?.balance ?? 0) < product.price_usd * q ? (
+              <p className="text-sm text-amber">Not enough balance. <Link to="/wallet" className="text-cyan underline">Top up your wallet</Link>.</p>
+            ) : (
+              <p className="text-sm text-fog">Paid instantly from your wallet balance.</p>
+            )
+          ) : wallets.length === 0 ? (
             <p className="text-sm text-amber">No payment options are set up yet.</p>
           ) : (
             <div className="grid gap-2">
@@ -91,8 +119,9 @@ function ProductPage() {
                 <button
                   key={w.id}
                   onClick={() => setWalletId(w.id)}
-                  className={`rounded-lg px-3 py-2 text-left text-sm ring-1 ${walletId === w.id ? "bg-cyan/10 text-snow ring-cyan/40" : "text-fog ring-snow/10"}`}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm ring-1 ${walletId === w.id ? "bg-cyan/10 text-snow ring-cyan/40" : "text-fog ring-snow/10"}`}
                 >
+                  <CryptoLogo asset={w.asset} chain={w.chain} size={24} />
                   {w.label}
                 </button>
               ))}
@@ -102,7 +131,7 @@ function ProductPage() {
         <p className="font-mono text-xs text-fog">Total: <span className="text-snow">{usd(product.price_usd * q)}</span></p>
         {error && <p className="text-sm text-rose">{error}</p>}
         {user ? (
-          <ActionButton className="w-full" onClick={buy} disabled={busy || !walletId || product.stock < 1}>
+          <ActionButton className="w-full" onClick={buy} disabled={busy || product.stock < 1 || (method === "crypto" ? !walletId : (myWallet?.balance ?? 0) < product.price_usd * q)}>
             {busy ? "Creating order…" : "Buy now"}
           </ActionButton>
         ) : (
