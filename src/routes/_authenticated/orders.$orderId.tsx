@@ -6,6 +6,8 @@ import { checkOrderPayment, getOrder } from "@/lib/orders.functions";
 import { ActionButton, Panel, Pill, statusTone } from "@/components/site/Pieces";
 import { Credentials } from "@/components/site/Credentials";
 import { usd } from "@/lib/store-format";
+import { QRCodeSVG } from "qrcode.react";
+import { CryptoLogo } from "@/components/site/CryptoLogo";
 
 export const Route = createFileRoute("/_authenticated/orders/$orderId")({
   head: () => ({
@@ -62,10 +64,21 @@ function OrderPage() {
 
         {order.status === "pending" && wallet && (
           <div className="panel-solid space-y-3 rounded-lg p-4">
-            <p className="text-sm text-fog">Send <b className="text-snow">exactly</b> this amount on <b className="text-snow">{wallet.label}</b>:</p>
+            <div className="flex items-center gap-2">
+              <CryptoLogo asset={wallet.asset} chain={wallet.chain} size={32} />
+              <p className="text-sm text-fog">Send <b className="text-snow">exactly</b> this amount on <b className="text-snow">{wallet.label}</b>:</p>
+            </div>
             <p className="font-mono text-2xl text-cyan">{order.expected_amount} {wallet.asset}</p>
-            <p className="label-mono">To address</p>
-            <p className="break-all font-mono text-sm text-snow">{wallet.address}</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="w-fit rounded-xl bg-snow p-3">
+                <QRCodeSVG value={wallet.address} size={160} />
+              </div>
+              <div className="min-w-0">
+                <p className="label-mono">To address</p>
+                <p className="break-all font-mono text-sm text-snow">{wallet.address}</p>
+                <p className="mt-1 font-mono text-[11px] text-fog">Scan with Trust Wallet or any crypto wallet.</p>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <ActionButton variant="ghost" onClick={() => navigator.clipboard.writeText(String(order.expected_amount))}>Copy amount</ActionButton>
               <ActionButton variant="ghost" onClick={() => navigator.clipboard.writeText(wallet.address)}>Copy address</ActionButton>
@@ -76,7 +89,9 @@ function OrderPage() {
             </p>
           </div>
         )}
-        {order.status === "paid" && <p className="text-sm text-amber">Payment received — your accounts are being released. If stock ran short, support will complete it.</p>}
+        {order.kind === "topup" && order.status === "delivered" && <p className="text-sm text-cyan">Payment received — {usd(order.total_usd)} was added to your <Link to="/wallet" className="underline">wallet</Link>.</p>}
+        {order.status === "refunded" && order.kind !== "topup" && <p className="text-sm text-amber">This order was refunded to your <Link to="/wallet" className="underline">wallet</Link>.</p>}
+        {order.status === "paid" && order.kind !== "topup" && <p className="text-sm text-amber">Payment received — your accounts are being released. If stock ran short, support will complete it.</p>}
         {order.status === "failed" && <p className="text-sm text-rose">This order expired without payment. Contact support if you already paid.</p>}
         {credentials.length > 0 && (
           <div>
