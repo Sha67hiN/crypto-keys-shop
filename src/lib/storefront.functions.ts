@@ -110,7 +110,7 @@ export const getProductBySlug = createServerFn({ method: "GET" })
       supabase.from("site_settings").select("store_name,payment_window_minutes").maybeSingle(),
     ]);
 
-    const [signed] = await signBanners(supabase, [product]);
+    const signed = (await signBanners(supabase, [product]))[0] ?? product;
     return {
       product: {
         ...signed,

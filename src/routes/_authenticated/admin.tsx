@@ -8,6 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { ActionButton, FieldLabel, Panel, Pill, StatCard, TextField, statusTone } from "@/components/site/Pieces";
 import { usd } from "@/lib/store-format";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -118,7 +119,7 @@ function Overview() {
                     <ActionButton onClick={() => act(o.id, "approve")}>Mark paid & deliver</ActionButton>
                   )}
                   {o.status === "pending" && <ActionButton variant="danger" onClick={() => act(o.id, "reject")}>Cancel</ActionButton>}
-                  {o.status === "delivered" && <ActionButton variant="ghost" onClick={() => act(o.id, "refund")}>Refund</ActionButton>}
+                  {(o.status === "delivered" || o.status === "paid") && o.product_name !== "Wallet top-up" && <ActionButton variant="ghost" onClick={() => { if (confirm("Refund this order to the customer's wallet?")) act(o.id, "refund"); }}>Refund to wallet</ActionButton>}
                 </td>
               </tr>
             ))}
@@ -129,8 +130,8 @@ function Overview() {
   );
 }
 
-type ProductForm = { id?: string; name: string; slug: string; subtitle: string; description: string; category: string; price_usd: string; is_active: boolean };
-const emptyProduct: ProductForm = { name: "", slug: "", subtitle: "", description: "", category: "", price_usd: "0", is_active: true };
+type ProductForm = { id?: string; name: string; slug: string; subtitle: string; description: string; category: string; price_usd: string; is_active: boolean; banner_url?: string | null };
+const emptyProduct: ProductForm = { name: "", slug: "", subtitle: "", description: "", category: "", price_usd: "0", is_active: true, banner_url: null };
 
 function Products() {
   const list = useServerFn(A.adminListProducts);
@@ -156,6 +157,24 @@ function Products() {
           <label className="flex items-center gap-2 text-sm text-snow">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Visible in store
           </label>
+          <div className="sm:col-span-2">
+            <FieldLabel>Banner image</FieldLabel>
+            <div className="flex flex-wrap items-center gap-3">
+              <input type="file" accept="image/*" className="text-sm text-fog" onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]+/g, "-")}`;
+                  const { error } = await supabase.storage.from("product-banners").upload(path, file, { upsert: true, contentType: file.type });
+                  if (error) throw new Error(error.message);
+                  setForm((f) => (f ? { ...f, banner_url: path } : f));
+                } catch (err) { alert(errMsg(err)); }
+              }} />
+              {form.banner_url && <span className="font-mono text-xs text-cyan">Banner attached</span>}
+              {form.banner_url && <ActionButton variant="ghost" onClick={() => setForm({ ...form, banner_url: null })}>Remove banner</ActionButton>}
+            </div>
+            <p className="mt-1 font-mono text-[11px] text-fog">Wide images work best (about 1600 × 700).</p>
+          </div>
           <div className="sm:col-span-2">
             <FieldLabel>Description</FieldLabel>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-lg bg-panel/60 p-3 text-sm text-snow ring-1 ring-snow/10" />
@@ -185,7 +204,7 @@ function Products() {
             </div>
             <div className="flex gap-1">
               <ActionButton variant="ghost" onClick={() => setStockFor(stockFor === p.id ? null : p.id)}>Stock</ActionButton>
-              <ActionButton variant="ghost" onClick={() => setForm({ id: p.id, name: p.name, slug: p.slug, subtitle: p.subtitle ?? "", description: p.description ?? "", category: p.category ?? "", price_usd: String(p.price_usd), is_active: p.is_active })}>Edit</ActionButton>
+              <ActionButton variant="ghost" onClick={() => setForm({ id: p.id, name: p.name, slug: p.slug, subtitle: p.subtitle ?? "", description: p.description ?? "", category: p.category ?? "", price_usd: String(p.price_usd), is_active: p.is_active, banner_url: p.banner_url })}>Edit</ActionButton>
               <ActionButton variant="danger" onClick={async () => { if (confirm("Delete this product?")) { try { await del({ data: { id: p.id } }); refresh(); } catch (e) { alert(errMsg(e)); } } }}>Delete</ActionButton>
             </div>
           </div>
@@ -253,6 +272,7 @@ function StockManager({ productId, onChange }: { productId: string; onChange: ()
 function Users() {
   const list = useServerFn(A.adminListUsers);
   const upd = useServerFn(A.adminUpdateUser);
+  const adjust = useServerFn(A.adminAdjustBalance);
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["admin-users"], queryFn: () => list() });
   async function act(userId: string, patch: { blocked?: boolean; makeAdmin?: boolean }) {
@@ -261,13 +281,18 @@ function Users() {
   return (
     <Panel className="overflow-x-auto p-0">
       <table className="w-full text-sm">
-        <thead className="label-mono text-left"><tr><th className="p-3">User</th><th>Orders</th><th>Spent</th><th>Role</th><th></th></tr></thead>
+        <thead className="label-mono text-left"><tr><th className="p-3">User</th><th>Orders</th><th>Spent</th><th>Wallet</th><th>Role</th><th></th></tr></thead>
         <tbody>
           {data?.map((u) => (
             <tr key={u.id} className="border-t border-snow/10 text-snow">
               <td className="p-3">{u.email}<br /><span className="font-mono text-[10px] text-fog">joined {new Date(u.created_at).toLocaleDateString()}</span></td>
               <td>{u.orders}</td>
               <td>{usd(u.spend)}</td>
+              <td>{usd(u.balance)} <button className="font-mono text-[11px] text-cyan" onClick={async () => {
+                const v = prompt("Add to wallet (use minus to remove, e.g. -2.50):");
+                if (!v) return;
+                try { await adjust({ data: { userId: u.id, amount: Number(v.replace(",", ".")) } }); qc.invalidateQueries({ queryKey: ["admin-users"] }); } catch (e) { alert(errMsg(e)); }
+              }}>edit</button></td>
               <td>{u.roles.includes("admin") ? <Pill tone="cyan">owner</Pill> : <Pill>customer</Pill>} {u.is_blocked && <Pill tone="rose">blocked</Pill>}</td>
               <td className="space-x-1 pr-3 text-right">
                 <ActionButton variant={u.is_blocked ? "ghost" : "danger"} onClick={() => act(u.id, { blocked: !u.is_blocked })}>{u.is_blocked ? "Unblock" : "Block"}</ActionButton>
