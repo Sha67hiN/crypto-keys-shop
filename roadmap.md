@@ -19,3 +19,9 @@
 - First signed-up owner becomes admin (claim_admin)
 - Support: in-site live chat box (user <-> admin messages, stored in DB)
 - Support: Telegram support handle in settings, shown across the site
+
+## Done (Oct 2026)
+- Product banners (dashboard upload, shown on store + product page)
+- Crypto logos on checkout/payment, QR code for wallet address
+- Customer wallet: crypto top-up, pay from balance, refunds to wallet, owner balance edits
+- Smoother page switching (retry, caching, preload)
