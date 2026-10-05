@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -30,25 +30,35 @@ function OrderPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["order", orderId], queryFn: () => fetchOrder({ data: { orderId } }) });
   const status = data?.order.status;
+  const [checking, setChecking] = useState(false);
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
   useEffect(() => {
     if (status !== "pending" && status !== "paid") return;
     const run = async () => {
+      setChecking(true);
       try {
         const r = await check({ data: { orderId } });
         if (r.status !== "pending") qc.invalidateQueries({ queryKey: ["order", orderId] });
       } catch {
         /* keep polling */
+      } finally {
+        setChecking(false);
+        setLastCheck(new Date());
       }
     };
     void run();
-    const t = setInterval(run, 20000);
+    const t = setInterval(run, 15000);
     return () => clearInterval(t);
   }, [status, orderId, check, qc]);
 
   if (isLoading) return <p className="py-10 text-fog">Loading…</p>;
   if (!data) return <p className="py-10 text-fog">Order not found.</p>;
   const { order, wallet, credentials } = data;
+  const isCrypto = (order as { payment_provider?: string }).payment_provider !== "balance";
+  const step =
+    order.status === "delivered" ? 3 : order.status === "paid" ? 2 : order.status === "pending" ? (checking ? 1 : 0) : -1;
+  const steps = ["Awaiting payment", "Detecting on-chain", "Confirming", "Paid"];
 
   return (
     <div className="animate-reveal space-y-4 py-8">
@@ -61,6 +71,35 @@ function OrderPage() {
           </div>
           <Pill tone={statusTone(order.status)} dot={order.status === "pending"}>{order.status}</Pill>
         </div>
+
+        {isCrypto && step >= 0 && (
+          <div className="panel-solid rounded-lg p-4">
+            <ol className="grid grid-cols-4 gap-2">
+              {steps.map((label, i) => {
+                const done = i < step || step === 3;
+                const active = i === step && step !== 3;
+                return (
+                  <li key={label} className="flex flex-col items-center gap-2 text-center">
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full border font-mono text-xs ${
+                        done ? "border-cyan bg-cyan text-ink" : active ? "border-cyan text-cyan animate-pulse-dot" : "border-line text-fog"
+                      }`}
+                    >
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span className={`text-[11px] leading-tight ${done || active ? "text-snow" : "text-fog"}`}>{label}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            {order.status === "pending" && (
+              <p className="mt-3 text-center font-mono text-[11px] text-fog">
+                {checking ? "Scanning the blockchain for your transfer…" : `Checking every 15s${lastCheck ? ` · last check ${lastCheck.toLocaleTimeString()}` : ""}`}
+              </p>
+            )}
+          </div>
+        )}
+
 
         {order.status === "pending" && wallet && (
           <div className="panel-solid space-y-3 rounded-lg p-4">
