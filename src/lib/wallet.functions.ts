@@ -41,8 +41,8 @@ export const createTopup = createServerFn({ method: "POST" })
     if (!wallet || !wallet.address) throw new Error("That payment network is not available.");
     const { data: settings } = await context.supabase.from("site_settings").select("payment_window_minutes").maybeSingle();
     const price = await getUsdPrice(wallet.asset);
-    const tail = (Math.floor(Math.random() * 9000) + 1000) / 1e6;
-    const expected = Number((data.amountUsd / price + tail).toFixed(6));
+    const tail = (Math.floor(Math.random() * 49) + 1) / 1000;
+    const expected = Number((Math.ceil((data.amountUsd / price) * 1000) / 1000 + tail).toFixed(3));
     const { data: orderId, error } = await context.supabase.rpc("server_place_topup", {
       _key: serverKeyHash(),
       _amount_usd: data.amountUsd,
