@@ -34,7 +34,7 @@ export const getSiteChrome = createServerFn({ method: "GET" }).handler(
 
     return (
       data ?? {
-        store_name: "Keyvault",
+        store_name: "515Store",
         footer_note: "credentials released on payment confirmation",
         support_email: null,
         telegram_handle: null,

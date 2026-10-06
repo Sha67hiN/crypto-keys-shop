@@ -31,6 +31,7 @@ export type StoreProduct = {
   accent: string;
   banner_url: string | null;
   stock: number;
+  sold: number;
 };
 
 async function signBanners<T extends { banner_url: string | null }>(supabase: ReturnType<typeof publicClient>, rows: T[]): Promise<T[]> {
@@ -57,23 +58,24 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(async () 
       .select("id,name,slug,subtitle,description,category,price_usd,icon_letter,accent,banner_url")
       .eq("is_active", true)
       .order("sort_order"),
-    supabase.from("product_stock_counts").select("product_id,available"),
+    supabase.from("product_stock_counts").select("product_id,available,sold"),
     supabase
       .from("site_settings")
       .select("store_name,tagline,heading,footer_note,support_email")
       .maybeSingle(),
   ]);
 
-  const stockMap = new Map((counts ?? []).map((c) => [c.product_id, Number(c.available ?? 0)]));
+  const stockMap = new Map((counts ?? []).map((c) => [c.product_id, { available: Number(c.available ?? 0), sold: Number(c.sold ?? 0) }]));
 
   const list: StoreProduct[] = (products ?? []).map((p) => ({
     ...p,
     price_usd: Number(p.price_usd),
-    stock: stockMap.get(p.id) ?? 0,
+    stock: stockMap.get(p.id)?.available ?? 0,
+    sold: stockMap.get(p.id)?.sold ?? 0,
   }));
 
   const site: StoreSettings = settings ?? {
-    store_name: "Keyvault",
+    store_name: "515Store",
     tagline: "Instant digital-credential delivery.",
     heading: "Fresh keys, ready to ship",
     footer_note: "credentials released on payment confirmation",
@@ -99,7 +101,7 @@ export const getProductBySlug = createServerFn({ method: "GET" })
     const [{ data: count }, { data: wallets }, { data: settings }] = await Promise.all([
       supabase
         .from("product_stock_counts")
-        .select("available")
+        .select("available,sold")
         .eq("product_id", product.id)
         .maybeSingle(),
       supabase
@@ -116,9 +118,10 @@ export const getProductBySlug = createServerFn({ method: "GET" })
         ...signed,
         price_usd: Number(product.price_usd),
         stock: Number(count?.available ?? 0),
+        sold: Number(count?.sold ?? 0),
       },
       wallets: (wallets ?? []).filter((w) => w.address.length > 0),
-      storeName: settings?.store_name ?? "Keyvault",
+      storeName: settings?.store_name ?? "515Store",
       windowMinutes: settings?.payment_window_minutes ?? 60,
     };
   });

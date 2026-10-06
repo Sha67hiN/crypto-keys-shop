@@ -461,6 +461,7 @@ export type Database = {
         Row: {
           available: number | null
           product_id: string | null
+          sold: number | null
         }
         Relationships: []
       }

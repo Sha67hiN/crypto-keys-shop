@@ -25,3 +25,6 @@
 - Crypto logos on checkout/payment, QR code for wallet address
 - Customer wallet: crypto top-up, pay from balance, refunds to wallet, owner balance edits
 - Smoother page switching (retry, caching, preload)
+- Wallet-credit checkout constraint fix with atomic debits
+- Public per-product sold counts on store and product pages
+- 515Store browser titles, product-first storefront, and prominent top navigation

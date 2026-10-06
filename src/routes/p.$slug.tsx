@@ -7,7 +7,7 @@ import { createOrder } from "@/lib/orders.functions";
 import { useSession } from "@/hooks/useSession";
 import { ActionButton, FieldLabel, Panel, Pill, ProductMark, TextField } from "@/components/site/Pieces";
 import { usd } from "@/lib/store-format";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyWallet, payWithBalance } from "@/lib/wallet.functions";
 import { CryptoLogo } from "@/components/site/CryptoLogo";
 
@@ -22,9 +22,9 @@ export const Route = createFileRoute("/p/$slug")({
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.name ?? "Product"} · Keyvault` },
+      { title: `${loaderData?.name ?? "Product"} · 515Store` },
       { name: "description", content: loaderData?.subtitle ?? "Buy with crypto, instant delivery." },
-      { property: "og:title", content: `${loaderData?.name ?? "Product"} · Keyvault` },
+      { property: "og:title", content: `${loaderData?.name ?? "Product"} · 515Store` },
       { property: "og:description", content: loaderData?.subtitle ?? "Buy with crypto, instant delivery." },
       { property: "og:type", content: "product" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -40,6 +40,7 @@ function ProductPage() {
   const { data } = useSuspenseQuery(productQuery(slug));
   const { user } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const create = useServerFn(createOrder);
   const [qty, setQty] = useState("1");
   const [walletId, setWalletId] = useState(data?.wallets[0]?.id ?? "");
@@ -60,6 +61,14 @@ function ProductPage() {
       const res = method === "balance"
         ? await payBal({ data: { productId: product.id, quantity: q } })
         : await create({ data: { productId: product.id, quantity: q, walletId } });
+      if (method === "balance") {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["my-wallet"] }),
+          queryClient.invalidateQueries({ queryKey: ["my-orders"] }),
+          queryClient.invalidateQueries({ queryKey: ["storefront"] }),
+          queryClient.invalidateQueries({ queryKey: ["product", slug] }),
+        ]);
+      }
       navigate({ to: "/orders/$orderId", params: { orderId: res.orderId } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create order.");
@@ -84,6 +93,7 @@ function ProductPage() {
         {product.description && <p className="mt-5 whitespace-pre-line text-sm text-fog">{product.description}</p>}
         <div className="mt-5 flex gap-2">
           <Pill tone={product.stock > 0 ? "cyan" : "rose"}>{product.stock} in stock</Pill>
+          <Pill tone="teal">{product.sold.toLocaleString()} sold</Pill>
           {product.category && <Pill>{product.category}</Pill>}
         </div>
       </Panel>

@@ -13,9 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Dashboard · Keyvault" },
+      { title: "Dashboard · 515Store" },
       { name: "description", content: "Manage products, stock, orders, users and settings." },
-      { property: "og:title", content: "Dashboard · Keyvault" },
+      { property: "og:title", content: "Dashboard · 515Store" },
       { property: "og:description", content: "Store owner dashboard." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -9,9 +9,9 @@ import { usd } from "@/lib/store-format";
 export const Route = createFileRoute("/_authenticated/orders")({
   head: () => ({
     meta: [
-      { title: "My Orders · Keyvault" },
+      { title: "My Orders · 515Store" },
       { name: "description", content: "Your orders and delivered accounts." },
-      { property: "og:title", content: "My Orders · Keyvault" },
+      { property: "og:title", content: "My Orders · 515Store" },
       { property: "og:description", content: "Your orders and delivered accounts." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
