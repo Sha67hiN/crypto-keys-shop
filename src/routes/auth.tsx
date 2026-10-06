@@ -6,16 +6,16 @@ import { ActionButton, FieldLabel, Panel, TextField } from "@/components/site/Pi
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in · Keyvault account marketplace" },
+      { title: "Sign in · 515Store account marketplace" },
       {
         name: "description",
         content:
-          "Sign in or create a Keyvault account to buy credentials and view your delivered accounts.",
+          "Sign in or create a 515Store account to buy credentials and view your delivered accounts.",
       },
-      { property: "og:title", content: "Sign in · Keyvault" },
+      { property: "og:title", content: "Sign in · 515Store" },
       {
         property: "og:description",
-        content: "Access your Keyvault orders and delivered account credentials.",
+        content: "Access your 515Store orders and delivered account credentials.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

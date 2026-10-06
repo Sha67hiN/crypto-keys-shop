@@ -12,9 +12,9 @@ import { CryptoLogo } from "@/components/site/CryptoLogo";
 export const Route = createFileRoute("/_authenticated/orders/$orderId")({
   head: () => ({
     meta: [
-      { title: "Order · Keyvault" },
+      { title: "Order · 515Store" },
       { name: "description", content: "Pay for your order and receive your accounts." },
-      { property: "og:title", content: "Order · Keyvault" },
+      { property: "og:title", content: "Order · 515Store" },
       { property: "og:description", content: "Pay for your order and receive your accounts." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

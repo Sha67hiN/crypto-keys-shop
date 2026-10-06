@@ -10,9 +10,9 @@ import { usd } from "@/lib/store-format";
 export const Route = createFileRoute("/_authenticated/wallet")({
   head: () => ({
     meta: [
-      { title: "My Wallet · Keyvault" },
+      { title: "My Wallet · 515Store" },
       { name: "description", content: "Top up your balance with crypto and pay instantly." },
-      { property: "og:title", content: "My Wallet · Keyvault" },
+      { property: "og:title", content: "My Wallet · 515Store" },
       { property: "og:description", content: "Top up your balance with crypto and pay instantly." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
