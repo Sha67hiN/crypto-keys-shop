@@ -130,8 +130,8 @@ export const createOrder = createServerFn({ method: "POST" })
     // A tiny unique tail makes each pending payment individually identifiable
     // on-chain, so incoming transfers can be matched without any provider.
     const base = totalUsd / price;
-    const tail = (Math.floor(Math.random() * 9000) + 1000) / 1e6;
-    const expected = Number((base + tail).toFixed(6));
+    const tail = (Math.floor(Math.random() * 49) + 1) / 1000;
+    const expected = Number((Math.ceil(base * 1000) / 1000 + tail).toFixed(3));
 
     const { serverKeyHash } = await import("./server-key.server");
     const { data: orderId, error } = await supabaseAdmin.rpc("server_place_order", {

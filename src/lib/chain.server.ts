@@ -215,5 +215,50 @@ export async function fetchIncomingTransfers(
   if (!wallet.address) throw new Error("This payment network has no wallet address configured yet.");
   if (chain === "tron") return tronTransfers(wallet, sinceMs);
   if (chain === "bitcoin" || chain === "btc") return bitcoinTransfers(wallet, sinceMs);
+  if ((chain === "bsc" || chain === "bnb") && wallet.contract_address) return bscTokenTransfers(wallet, sinceMs);
   return evmTransfers(wallet, sinceMs);
+}
+
+const BSC_RPC = "https://bsc-rpc.publicnode.com";
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+async function bscRpc<T>(method: string, params: unknown[]): Promise<T> {
+  const res = await fetch(BSC_RPC, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  if (!res.ok) throw new Error(`BSC lookup failed (${res.status})`);
+  const json = (await res.json()) as { result?: T; error?: { message?: string } };
+  if (json.error) throw new Error(json.error.message ?? "BSC lookup failed");
+  return json.result as T;
+}
+
+// Keyless BEP20 watcher: reads Transfer events to our address straight from a public node.
+async function bscTokenTransfers(wallet: WalletRow, sinceMs: number): Promise<IncomingTransfer[]> {
+  const latest = parseInt(await bscRpc<string>("eth_blockNumber", []), 16);
+  const seconds = Math.max(60, (Date.now() - sinceMs) / 1000);
+  const span = Math.min(6000, Math.ceil(seconds / 0.45) + 200);
+  const toTopic = "0x" + wallet.address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  const logs = await bscRpc<
+    { data: string; transactionHash: string; blockTimestamp?: string; topics: string[] }[]
+  >("eth_getLogs", [
+    {
+      fromBlock: "0x" + (latest - span).toString(16),
+      toBlock: "latest",
+      address: wallet.contract_address,
+      topics: [TRANSFER_TOPIC, null, toTopic],
+    },
+  ]);
+  return (logs ?? []).flatMap((l) => {
+    const ts = l.blockTimestamp ? parseInt(l.blockTimestamp, 16) * 1000 : Date.now();
+    if (ts < sinceMs) return [];
+    const raw = BigInt(l.data);
+    return [{
+      hash: l.transactionHash,
+      amount: scale(raw.toString(), wallet.decimals),
+      timestamp: ts,
+      from: "0x" + (l.topics[1] ?? "").slice(-40),
+    }];
+  });
 }
