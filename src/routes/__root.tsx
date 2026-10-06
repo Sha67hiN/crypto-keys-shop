@@ -81,9 +81,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Keyvault · Account marketplace" },
+      { title: "515Store · Account marketplace" },
       { name: "description", content: "Buy accounts with crypto, delivered instantly." },
-            { property: "og:title", content: "Keyvault" },
+      { property: "og:title", content: "515Store" },
       { property: "og:description", content: "Buy accounts with crypto, delivered instantly." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
